@@ -1,0 +1,59 @@
+{
+  "name": "podman-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for managing Podman containers under WSL",
+  "entry_point": "java -jar /home/masanson/projects/mcp-podman/target/podman-mcp-1.0.0-runner.jar",
+  "transport": "stdio",
+  "tools": {
+    "list_containers": {
+      "description": "List all Podman containers (running and stopped)"
+    },
+    "start_container": {
+      "description": "Start a Podman container by name or ID",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Container name or ID" }
+        },
+        "required": ["name"]
+      }
+    },
+    "stop_container": {
+      "description": "Stop a running Podman container by name or ID",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Container name or ID" }
+        },
+        "required": ["name"]
+      }
+    },
+    "restart_container": {
+      "description": "Restart a Podman container by name or ID",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Container name or ID" }
+        },
+        "required": ["name"]
+      }
+    },
+    "logs_container": {
+      "description": "Get logs from a Podman container",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Container name or ID" },
+          "lines": { "type": "integer", "description": "Number of tail lines (default: 100)" }
+        },
+        "required": ["name"]
+      }
+    },
+    "podman_status": {
+      "description": "Check the status of the Podman rootless socket and daemon"
+    },
+    "healthcheck": {
+      "description": "Full health check: Podman socket, running containers, and key service ports"
+    }
+  }
+}
