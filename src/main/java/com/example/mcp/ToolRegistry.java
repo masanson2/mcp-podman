@@ -94,7 +94,9 @@ public class ToolRegistry {
 
         try {
             JsonNode output = tool.run(arguments);
-            String text = output.isTextual() ? output.asText() : mapper.writeValueAsString(output);
+            String raw = output.isTextual() ? output.asText() : mapper.writerWithDefaultPrettyPrinter().writeValueAsString(output);
+            // Wrap in a code fence so the CLI renderer treats colons as literal characters
+            String text = "```json\n" + raw + "\n```";
             ObjectNode result = mapper.createObjectNode();
             ArrayNode content = result.putArray("content");
             ObjectNode item = content.addObject();
