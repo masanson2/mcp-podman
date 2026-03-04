@@ -6,7 +6,13 @@
   "transport": "stdio",
   "tools": {
     "list_containers": {
-      "description": "List all Podman containers (running and stopped)"
+      "description": "List all Podman containers (running and stopped). Pass running_only=true to get only running containers.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "running_only": { "type": "boolean", "description": "If true, returns only running containers (default: false)" }
+        }
+      }
     },
     "start_container": {
       "description": "Start a Podman container by name or ID",
