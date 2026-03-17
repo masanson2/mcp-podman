@@ -60,6 +60,9 @@
     },
     "healthcheck": {
       "description": "Full health check: Podman socket, running containers, and key service ports"
+    },
+    "repair_podman_socket": {
+      "description": "Repairs the rootless Podman socket by recreating /run/user/<uid> with correct permissions and restarting the socket service. Use when Podman fails with errors about a missing /run/user directory."
     }
   }
 }

@@ -31,6 +31,7 @@ public class ToolRegistry {
         register(new PodmanLogs());
         register(new PodmanStatus());
         register(new Healthcheck());
+        register(new PodmanRepairSocket());
     }
 
     private void register(MCPTool tool) {
