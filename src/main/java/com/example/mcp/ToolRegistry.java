@@ -25,6 +25,7 @@ public class ToolRegistry {
     @PostConstruct
     void init() {
         register(new PodmanListContainers());
+        register(new PodmanRunContainer());
         register(new PodmanStartContainer());
         register(new PodmanStopContainer());
         register(new PodmanRestartContainer());

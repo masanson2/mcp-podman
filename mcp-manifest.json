@@ -14,6 +14,28 @@
         }
       }
     },
+    "run_container": {
+      "description": "Run a new Podman container with enforced resource limits and WSL2-safe defaults. Supports optional profiles: jvm-backend, frontend, db-dev, infra.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "image":        { "type": "string",  "description": "Container image to run (e.g. nginx:latest)" },
+          "name":         { "type": "string",  "description": "Optional container name (--name)" },
+          "profile":      { "type": "string",  "description": "Resource profile: jvm-backend | frontend | db-dev | infra" },
+          "cpus":         { "type": "string",  "description": "Override CPU limit (e.g. 2.0). Defaults to profile or 1" },
+          "memory":       { "type": "string",  "description": "Override memory limit (e.g. 512m). Defaults to profile or 512m" },
+          "memory_swap":  { "type": "string",  "description": "Override memory+swap limit. Defaults to same as memory" },
+          "pids_limit":   { "type": "integer", "description": "Override pids limit. Default: 256" },
+          "network":      { "type": "string",  "description": "Network mode. Default: slirp4netns" },
+          "ports":        { "type": "string",  "description": "Port mappings, space-separated (e.g. '8080:80 8443:443')" },
+          "volumes":      { "type": "string",  "description": "Volume mounts, space-separated (e.g. '/home/user/data:/data')" },
+          "env":          { "type": "string",  "description": "Extra environment variables, space-separated (e.g. 'FOO=bar BAZ=qux')" },
+          "detach":       { "type": "boolean", "description": "Run container in background (-d). Default: true" },
+          "extra_args":   { "type": "string",  "description": "Additional raw arguments appended to the podman run command" }
+        },
+        "required": ["image"]
+      }
+    },
     "start_container": {
       "description": "Start a Podman container by name or ID",
       "input_schema": {
