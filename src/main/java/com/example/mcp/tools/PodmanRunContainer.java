@@ -17,6 +17,8 @@ import java.util.Locale;
  *   <li>{@code frontend}    – 0.5 CPUs, 256 MB memory</li>
  *   <li>{@code db-dev}      – 1 CPU,   512 MB memory</li>
  *   <li>{@code infra}       – 0.5 CPUs, 256 MB memory</li>
+ *   <li>{@code docmind}     – 2 CPUs, 2048 MB memory, preset image/ports/volumes/env for docmind</li>
+ *   <li>{@code dbmind}      – 2 CPUs, 2048 MB memory, preset image/ports/volumes/env for dbmind</li>
  * </ul>
  */
 public class PodmanRunContainer extends MCPTool {
@@ -31,7 +33,9 @@ public class PodmanRunContainer extends MCPTool {
     @Override
     public String description() {
         return "Run a new Podman container with enforced resource limits and WSL2-safe defaults. "
-                + "Supports optional profiles: jvm-backend, frontend, db-dev, infra.";
+                + "Supports optional profiles: jvm-backend, frontend, db-dev, infra, docmind, dbmind. "
+                + "The docmind and dbmind profiles supply a default image, ports, volumes and env vars "
+                + "matching the production configuration; individual fields can still be overridden.";
     }
 
     @Override
@@ -50,7 +54,7 @@ public class PodmanRunContainer extends MCPTool {
 
         props.putObject("profile")
                 .put("type", "string")
-                .put("description", "Resource profile: jvm-backend | frontend | db-dev | infra");
+                .put("description", "Resource profile: jvm-backend | frontend | db-dev | infra | docmind | dbmind");
 
         props.putObject("cpus")
                 .put("type", "string")
@@ -92,31 +96,45 @@ public class PodmanRunContainer extends MCPTool {
                 .put("type", "string")
                 .put("description", "Additional raw arguments appended to the podman run command");
 
-        schema.putArray("required").add("image");
+        schema.putArray("required");
         return schema;
     }
 
     @Override
     public JsonNode run(JsonNode input) throws Exception {
-        String image = input.path("image").asText();
-        if (image.isBlank()) {
-            return MAPPER.getNodeFactory().textNode("ERROR: 'image' is required");
-        }
-
         // ------------------------------------------------------------------ //
-        // 1. Resolve resource profile
+        // 1. Resolve resource profile (before image check so named flavours
+        //    can supply a default image when none is provided by the caller)
         // ------------------------------------------------------------------ //
         String profile = input.path("profile").asText("").toLowerCase(Locale.ROOT);
         String defaultCpus;
         String defaultMemory;
-        boolean isJvmProfile = false;
+        boolean isJvmProfile     = false;
+        boolean isDocmindProfile = false;
+        boolean isDbmindProfile  = false;
 
         switch (profile) {
             case "jvm-backend" -> { defaultCpus = "1.5"; defaultMemory = "1024m"; isJvmProfile = true; }
             case "frontend"    -> { defaultCpus = "0.5"; defaultMemory = "256m"; }
             case "db-dev"      -> { defaultCpus = "1";   defaultMemory = "512m"; }
             case "infra"       -> { defaultCpus = "0.5"; defaultMemory = "256m"; }
+            case "docmind"     -> { defaultCpus = "2";   defaultMemory = "2048m"; isDocmindProfile = true; }
+            case "dbmind"      -> { defaultCpus = "2";   defaultMemory = "2048m"; isDbmindProfile = true; }
             default            -> { defaultCpus = "1";   defaultMemory = "512m"; }
+        }
+
+        // ------------------------------------------------------------------ //
+        // 2. Resolve image (named flavours supply a default when omitted)
+        // ------------------------------------------------------------------ //
+        String image = input.path("image").asText();
+        if (image.isBlank()) {
+            if (isDocmindProfile) {
+                image = PodmanPullImage.DOCMIND_IMAGE;
+            } else if (isDbmindProfile) {
+                image = PodmanPullImage.DBMIND_IMAGE;
+            } else {
+                return MAPPER.getNodeFactory().textNode("ERROR: 'image' is required");
+            }
         }
 
         String cpus        = nonBlank(input.path("cpus").asText(""),         defaultCpus);
@@ -127,7 +145,7 @@ public class PodmanRunContainer extends MCPTool {
         boolean detach     = input.path("detach").asBoolean(true);
 
         // ------------------------------------------------------------------ //
-        // 2. Bind-mount safety check for /mnt/c paths
+        // 3. Bind-mount safety check for /mnt/c paths
         // ------------------------------------------------------------------ //
         String volumes = input.path("volumes").asText("");
         String mountWarning = "";
@@ -139,7 +157,7 @@ public class PodmanRunContainer extends MCPTool {
         }
 
         // ------------------------------------------------------------------ //
-        // 3. Build the podman run command
+        // 4. Build the podman run command
         // ------------------------------------------------------------------ //
         StringBuilder cmd = new StringBuilder("podman run");
 
@@ -147,8 +165,12 @@ public class PodmanRunContainer extends MCPTool {
             cmd.append(" -d");
         }
 
-        // Container name
+        // Container name (user-provided or profile preset)
         String containerName = input.path("name").asText("");
+        if (containerName.isBlank()) {
+            if (isDocmindProfile) containerName = "docmind";
+            else if (isDbmindProfile) containerName = "dbmind";
+        }
         if (!containerName.isBlank()) {
             cmd.append(" --name ").append(shellQuote(containerName));
         }
@@ -172,27 +194,48 @@ public class PodmanRunContainer extends MCPTool {
             cmd.append(" -e JAVA_TOOL_OPTIONS=").append(shellQuote(JVM_TOOL_OPTIONS));
         }
 
-        // Port mappings
+        // Port mappings (user-provided or profile preset)
         String ports = input.path("ports").asText("");
+        if (ports.isBlank()) {
+            if (isDocmindProfile) ports = "8008:8008";
+            else if (isDbmindProfile) ports = "8009:8009";
+        }
         if (!ports.isBlank()) {
             for (String p : ports.trim().split("\\s+")) {
                 cmd.append(" -p ").append(shellQuote(p));
             }
         }
 
-        // Volume mounts
+        // Volume mounts (user-provided or profile preset)
         if (!volumes.isBlank()) {
             for (String v : volumes.trim().split("\\s+")) {
                 cmd.append(" -v ").append(shellQuote(v));
             }
+        } else if (isDocmindProfile) {
+            cmd.append(" -v 'docmind_pgdata:/var/lib/postgresql/data'");
+            cmd.append(" -v 'docmind_fastembed_cache:/app/.fastembed'");
+            cmd.append(" -v $HOME/.docmind:/root/.docmind");
+        } else if (isDbmindProfile) {
+            cmd.append(" -v 'dbmind_pgdata:/var/lib/postgresql/data'");
+            cmd.append(" -v $HOME/.dbmind:/root/.dbmind");
         }
 
-        // Extra environment variables
+        // Extra environment variables (user-provided or profile preset)
         String env = input.path("env").asText("");
         if (!env.isBlank()) {
             for (String e : env.trim().split("\\s+")) {
                 cmd.append(" -e ").append(shellQuote(e));
             }
+        } else if (isDocmindProfile) {
+            cmd.append(" -e 'PUBLIC_BASE_URL=http://localhost:8008'");
+            cmd.append(" -e 'FTS_LANG=italian'");
+            cmd.append(" -e 'ENABLE_CHAT=true'");
+            cmd.append(" -e 'DOCMIND_DEFAULT_PROVIDER=copilot'");
+            cmd.append(" -e GITHUB_TOKEN=$(gh auth token)");
+        } else if (isDbmindProfile) {
+            cmd.append(" -e 'PUBLIC_BASE_URL=http://localhost:8009'");
+            cmd.append(" -e 'FTS_LANG=italian'");
+            cmd.append(" -e GITHUB_TOKEN=$(gh auth token)");
         }
 
         // Additional raw arguments

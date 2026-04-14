@@ -101,6 +101,99 @@ class PodmanRunContainerTest {
     }
 
     // ------------------------------------------------------------------ //
+    // docmind / dbmind profiles
+    // ------------------------------------------------------------------ //
+
+    @Test
+    void docmindProfileAppliesCorrectLimits() throws Exception {
+        String cmd = buildCmd(buildInputNode("profile", "docmind"));
+        assertTrue(cmd.contains("--cpus=2"),         "docmind cpus");
+        assertTrue(cmd.contains("--memory=2048m"),   "docmind memory");
+    }
+
+    @Test
+    void docmindProfileUsesDefaultImage() throws Exception {
+        String cmd = buildCmd(buildInputNode("profile", "docmind"));
+        assertTrue(cmd.contains("docmind:latest"), "docmind default image");
+    }
+
+    @Test
+    void docmindProfileUsesDefaultName() throws Exception {
+        String cmd = buildCmd(buildInputNode("profile", "docmind"));
+        assertTrue(cmd.contains("--name 'docmind'"), "docmind default container name");
+    }
+
+    @Test
+    void docmindProfileUsesDefaultPort() throws Exception {
+        String cmd = buildCmd(buildInputNode("profile", "docmind"));
+        assertTrue(cmd.contains("-p '8008:8008'"), "docmind default port");
+    }
+
+    @Test
+    void docmindProfileUsesDefaultVolumes() throws Exception {
+        String cmd = buildCmd(buildInputNode("profile", "docmind"));
+        assertTrue(cmd.contains("docmind_pgdata:/var/lib/postgresql/data"), "docmind pgdata volume");
+        assertTrue(cmd.contains("docmind_fastembed_cache:/app/.fastembed"), "docmind fastembed volume");
+        assertTrue(cmd.contains("$HOME/.docmind:/root/.docmind"), "docmind home volume with $HOME");
+    }
+
+    @Test
+    void docmindProfileUsesDefaultEnv() throws Exception {
+        String cmd = buildCmd(buildInputNode("profile", "docmind"));
+        assertTrue(cmd.contains("PUBLIC_BASE_URL=http://localhost:8008"), "docmind PUBLIC_BASE_URL");
+        assertTrue(cmd.contains("FTS_LANG=italian"),                      "docmind FTS_LANG");
+        assertTrue(cmd.contains("ENABLE_CHAT=true"),                      "docmind ENABLE_CHAT");
+        assertTrue(cmd.contains("DOCMIND_DEFAULT_PROVIDER=copilot"),      "docmind provider");
+        assertTrue(cmd.contains("GITHUB_TOKEN=$(gh auth token)"),         "docmind GITHUB_TOKEN with substitution");
+    }
+
+    @Test
+    void docmindProfileImageCanBeOverridden() throws Exception {
+        String cmd = buildCmd(buildInputNode("profile", "docmind",
+                "image", "registry.local/docmind-custom:dev"));
+        assertTrue(cmd.contains("registry.local/docmind-custom:dev"), "custom image overrides profile default");
+    }
+
+    @Test
+    void docmindProfilePortCanBeOverridden() throws Exception {
+        String cmd = buildCmd(buildInputNode("profile", "docmind", "ports", "9090:8008"));
+        assertTrue(cmd.contains("-p '9090:8008'"),  "user-supplied port must be used");
+        assertFalse(cmd.contains("-p '8008:8008'"), "default port must not appear when overridden");
+    }
+
+    @Test
+    void docmindProfileEnvCanBeOverridden() throws Exception {
+        String cmd = buildCmd(buildInputNode("profile", "docmind", "env", "MY_VAR=1"));
+        assertTrue(cmd.contains("-e 'MY_VAR=1'"),             "user env must be used");
+        assertFalse(cmd.contains("DOCMIND_DEFAULT_PROVIDER"), "default env must not appear when overridden");
+    }
+
+    @Test
+    void dbmindProfileAppliesCorrectLimits() throws Exception {
+        String cmd = buildCmd(buildInputNode("profile", "dbmind"));
+        assertTrue(cmd.contains("--cpus=2"),       "dbmind cpus");
+        assertTrue(cmd.contains("--memory=2048m"), "dbmind memory");
+    }
+
+    @Test
+    void dbmindProfileUsesDefaultImage() throws Exception {
+        String cmd = buildCmd(buildInputNode("profile", "dbmind"));
+        assertTrue(cmd.contains("dbmind:latest"), "dbmind default image");
+    }
+
+    @Test
+    void dbmindProfileUsesDefaultPort() throws Exception {
+        String cmd = buildCmd(buildInputNode("profile", "dbmind"));
+        assertTrue(cmd.contains("-p '8009:8009'"), "dbmind default port");
+    }
+
+    @Test
+    void dbmindProfileUsesGithubTokenSubstitution() throws Exception {
+        String cmd = buildCmd(buildInputNode("profile", "dbmind"));
+        assertTrue(cmd.contains("GITHUB_TOKEN=$(gh auth token)"), "dbmind GITHUB_TOKEN with substitution");
+    }
+
+    // ------------------------------------------------------------------ //
     // Override behaviour
     // ------------------------------------------------------------------ //
 

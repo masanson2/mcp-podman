@@ -15,13 +15,13 @@
       }
     },
     "run_container": {
-      "description": "Run a new Podman container with enforced resource limits and WSL2-safe defaults. Supports optional profiles: jvm-backend, frontend, db-dev, infra.",
+      "description": "Run a new Podman container with enforced resource limits and WSL2-safe defaults. Supports optional profiles: jvm-backend, frontend, db-dev, infra, docmind, dbmind. The docmind and dbmind profiles supply a default image, ports, volumes and env vars matching the production configuration; individual fields can still be overridden.",
       "input_schema": {
         "type": "object",
         "properties": {
-          "image":        { "type": "string",  "description": "Container image to run (e.g. nginx:latest)" },
+          "image":        { "type": "string",  "description": "Container image to run (e.g. nginx:latest). Optional for docmind/dbmind profiles." },
           "name":         { "type": "string",  "description": "Optional container name (--name)" },
-          "profile":      { "type": "string",  "description": "Resource profile: jvm-backend | frontend | db-dev | infra" },
+          "profile":      { "type": "string",  "description": "Resource profile: jvm-backend | frontend | db-dev | infra | docmind | dbmind" },
           "cpus":         { "type": "string",  "description": "Override CPU limit (e.g. 2.0). Defaults to profile or 1" },
           "memory":       { "type": "string",  "description": "Override memory limit (e.g. 512m). Defaults to profile or 512m" },
           "memory_swap":  { "type": "string",  "description": "Override memory+swap limit. Defaults to same as memory" },
@@ -33,7 +33,17 @@
           "detach":       { "type": "boolean", "description": "Run container in background (-d). Default: true" },
           "extra_args":   { "type": "string",  "description": "Additional raw arguments appended to the podman run command" }
         },
-        "required": ["image"]
+        "required": []
+      }
+    },
+    "pull_image": {
+      "description": "Pull (download / update to latest) a Podman image from a registry. Use flavour='docmind' or flavour='dbmind' for the pre-configured production images, or supply a fully-qualified image reference in the 'image' field.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "flavour": { "type": "string", "description": "Named flavour to pull: docmind | dbmind. Takes precedence over 'image'." },
+          "image":   { "type": "string", "description": "Fully-qualified image reference to pull (e.g. registry/org/app:latest). Ignored when 'flavour' is set." }
+        }
       }
     },
     "start_container": {
