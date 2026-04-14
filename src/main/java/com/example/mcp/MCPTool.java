@@ -78,6 +78,43 @@ public abstract class MCPTool {
         return execRaw(repair);
     }
 
+    /**
+     * Strips any non-JSON prefix from Podman output.
+     *
+     * <p>Podman (especially in rootless mode) occasionally emits text warnings on
+     * stderr before the actual JSON payload (e.g. {@code time="..." level=warning
+     * msg="no systemd user session available"}). Because {@link #execRaw} merges
+     * stderr into stdout via {@code redirectErrorStream(true)}, those lines appear
+     * at the start of the combined output and break JSON parsing.
+     *
+     * <p>This method locates the first {@code [} or {@code {} character and returns
+     * the substring from that point onward, effectively discarding any leading
+     * warning lines. If no JSON start character is found the original string is
+     * returned unchanged so callers can handle the "empty / non-JSON" case as
+     * before.
+     *
+     * @param output raw command output, possibly with leading warning lines
+     * @return the output with any non-JSON prefix removed
+     */
+    protected static String stripNonJsonPrefix(String output) {
+        if (output == null || output.isBlank()) {
+            return output;
+        }
+        int arrayStart  = output.indexOf('[');
+        int objectStart = output.indexOf('{');
+        int jsonStart;
+        if (arrayStart < 0 && objectStart < 0) {
+            return output; // no JSON found – return as-is
+        } else if (arrayStart < 0) {
+            jsonStart = objectStart;
+        } else if (objectStart < 0) {
+            jsonStart = arrayStart;
+        } else {
+            jsonStart = Math.min(arrayStart, objectStart);
+        }
+        return output.substring(jsonStart);
+    }
+
     /** Helper: build a schema with a single required string property. */
     protected static ObjectNode schemaWithRequiredName(String description) {
         ObjectNode schema = MAPPER.createObjectNode();

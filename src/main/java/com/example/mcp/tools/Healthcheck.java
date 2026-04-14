@@ -26,9 +26,10 @@ public class Healthcheck extends MCPTool {
 
         // 2. Running containers
         String runningJson = exec("podman ps --format json");
+        String cleanedJson = stripNonJsonPrefix(runningJson);
         ObjectNode services = result.putObject("services");
         try {
-            JsonNode containers = MAPPER.readTree(runningJson.isBlank() ? "[]" : runningJson);
+            JsonNode containers = MAPPER.readTree(cleanedJson.isBlank() ? "[]" : cleanedJson);
             if (containers.isArray()) {
                 for (JsonNode c : containers) {
                     String cname = c.path("Names").isArray()

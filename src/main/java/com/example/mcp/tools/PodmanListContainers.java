@@ -32,6 +32,7 @@ public class PodmanListContainers extends MCPTool {
         boolean runningOnly = input.path("running_only").asBoolean(false);
         String cmd = runningOnly ? "podman ps --format json" : "podman ps -a --format json";
         String result = exec(cmd);
-        return MAPPER.readTree(result.isBlank() ? "[]" : result);
+        String cleaned = stripNonJsonPrefix(result);
+        return MAPPER.readTree(cleaned.isBlank() ? "[]" : cleaned);
     }
 }
